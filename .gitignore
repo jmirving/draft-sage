@@ -86,3 +86,6 @@ Desktop.ini
 
 *.pkl
 *.pth
+
+# Local Beads state
+.beads/
