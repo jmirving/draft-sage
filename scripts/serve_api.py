@@ -216,6 +216,72 @@ def load_eligibility(path: Optional[Path], champion2idx: dict[str, int]) -> dict
     return by_league
 
 
+def load_model_context(
+    *,
+    run_dir: Optional[Path] = None,
+    model_path: Optional[Path] = None,
+    config_path: Optional[Path] = None,
+    champion_mapping_path: Optional[str] = None,
+    eligibility_path: Optional[str] = None,
+) -> dict:
+    workspace_root = Path(__file__).resolve().parents[2]
+    resolved_run_dir = run_dir or find_latest_run_dir(workspace_root)
+
+    resolved_config = config_path
+    resolved_model = model_path
+    if resolved_run_dir:
+        resolved_config = resolved_config or resolved_run_dir / "config.json"
+        resolved_model = resolved_model or resolved_run_dir / "model.pth"
+
+    if not resolved_model or not resolved_model.exists():
+        raise FileNotFoundError("model.pth not found. Provide --model-path or --run-dir.")
+
+    config = {}
+    if resolved_config and resolved_config.exists():
+        with resolved_config.open("r", encoding="utf-8") as handle:
+            config = json.load(handle)
+
+    mapping_path = champion_mapping_path or config.get("champion_mapping_path")
+    if not mapping_path:
+        raise FileNotFoundError("Champion mapping path missing.")
+
+    eligibility_override = eligibility_path or config.get("champion_eligibility_path")
+
+    state_dict = torch.load(resolved_model, map_location="cpu")
+    feature_dims = {
+        "num_champions": state_dict["champion_embedding.weight"].shape[0],
+        "num_patches": state_dict["patch_embedding.weight"].shape[0],
+        "num_actions": state_dict["action_embedding.weight"].shape[0],
+        "num_sides": state_dict["side_embedding.weight"].shape[0],
+        "num_events": state_dict["event_embedding.weight"].shape[0],
+        "num_leagues": state_dict["league_embedding.weight"].shape[0],
+        "num_teams": state_dict["team_embedding.weight"].shape[0],
+        "draft_sequence": len(DRAFT_ORDER),
+    }
+    hidden_size = state_dict["draft_encoder.0.weight"].shape[0]
+    output_size = state_dict["classifier.3.weight"].shape[0]
+
+    model = DraftMLP(feature_dims, hidden_size=hidden_size, output_size=output_size)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    mapping_entries = load_champion_mapping(Path(mapping_path))
+    champion2idx, idx2name = build_champion_indexes(mapping_entries)
+    eligibility = load_eligibility(
+        Path(eligibility_override) if eligibility_override else None, champion2idx
+    )
+
+    return {
+        "model": model,
+        "device": torch.device("cpu"),
+        "champion2idx": champion2idx,
+        "idx2name": idx2name,
+        "eligibility_by_league": eligibility,
+        "feature_dims": feature_dims,
+        "run_dir": resolved_run_dir,
+    }
+
+
 def build_unavailable_indices(payload: dict, champion2idx: dict[str, int]) -> set[int]:
     taken = set()
     for name in payload.get("fearlessLockout", []) or []:
@@ -427,63 +493,23 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    workspace_root = Path(__file__).resolve().parents[2]
+    context = load_model_context(
+        run_dir=Path(args.run_dir) if args.run_dir else None,
+        model_path=Path(args.model_path) if args.model_path else None,
+        config_path=Path(args.config_path) if args.config_path else None,
+        champion_mapping_path=args.champion_mapping_path,
+        eligibility_path=args.eligibility_path,
+    )
 
-    run_dir = Path(args.run_dir) if args.run_dir else None
-    if run_dir is None:
-        run_dir = find_latest_run_dir(workspace_root)
-
-    config_path = Path(args.config_path) if args.config_path else None
-    model_path = Path(args.model_path) if args.model_path else None
-    if run_dir:
-        config_path = config_path or run_dir / "config.json"
-        model_path = model_path or run_dir / "model.pth"
-
-    if not model_path or not model_path.exists():
-        raise FileNotFoundError("model.pth not found. Provide --model-path or --run-dir.")
-
-    config = {}
-    if config_path and config_path.exists():
-        with config_path.open("r", encoding="utf-8") as handle:
-            config = json.load(handle)
-
-    mapping_path = args.champion_mapping_path or config.get("champion_mapping_path")
-    if not mapping_path:
-        raise FileNotFoundError("Champion mapping path missing (use --champion-mapping-path or config.json).")
-
-    eligibility_path = args.eligibility_path or config.get("champion_eligibility_path")
-
-    state_dict = torch.load(model_path, map_location="cpu")
-    feature_dims = {
-        "num_champions": state_dict["champion_embedding.weight"].shape[0],
-        "num_patches": state_dict["patch_embedding.weight"].shape[0],
-        "num_actions": state_dict["action_embedding.weight"].shape[0],
-        "num_sides": state_dict["side_embedding.weight"].shape[0],
-        "num_events": state_dict["event_embedding.weight"].shape[0],
-        "num_leagues": state_dict["league_embedding.weight"].shape[0],
-        "num_teams": state_dict["team_embedding.weight"].shape[0],
-        "draft_sequence": len(DRAFT_ORDER),
-    }
-    hidden_size = state_dict["draft_encoder.0.weight"].shape[0]
-    output_size = state_dict["classifier.3.weight"].shape[0]
-
-    model = DraftMLP(feature_dims, hidden_size=hidden_size, output_size=output_size)
-    model.load_state_dict(state_dict)
-    model.eval()
-
-    mapping_entries = load_champion_mapping(Path(mapping_path))
-    champion2idx, idx2name = build_champion_indexes(mapping_entries)
-    eligibility = load_eligibility(Path(eligibility_path) if eligibility_path else None, champion2idx)
-
-    DraftHandler.model = model
-    DraftHandler.device = torch.device("cpu")
-    DraftHandler.champion2idx = champion2idx
-    DraftHandler.idx2name = idx2name
-    DraftHandler.eligibility_by_league = eligibility
-    DraftHandler.feature_dims = feature_dims
+    DraftHandler.model = context["model"]
+    DraftHandler.device = context["device"]
+    DraftHandler.champion2idx = context["champion2idx"]
+    DraftHandler.idx2name = context["idx2name"]
+    DraftHandler.eligibility_by_league = context["eligibility_by_league"]
+    DraftHandler.feature_dims = context["feature_dims"]
 
     server = HTTPServer((args.host, args.port), DraftHandler)
-    run_note = f"run-dir={run_dir}" if run_dir else "run-dir=manual"
+    run_note = f"run-dir={context['run_dir']}" if context.get("run_dir") else "run-dir=manual"
     print(f"Draft Sage API listening on http://{args.host}:{args.port} ({run_note})")
     server.serve_forever()
 

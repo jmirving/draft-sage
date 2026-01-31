@@ -1,6 +1,19 @@
+from pathlib import Path
+
 import torch
 
-from scripts.serve_api import DraftMLP, build_champion_indexes, normalize, select_champion
+from scripts.serve_api import (
+    DraftMLP,
+    build_champion_indexes,
+    load_model_context,
+    normalize,
+    select_champion,
+)
+
+REAL_RUN_DIR = Path(
+    "/home/jirving/projects/lol/.tmp/"
+    "training-clean-2025-weights-matrix-seriesid-elig-band-0p3-0p4/20260117_151849"
+)
 
 
 def build_model(output_size: int) -> DraftMLP:
@@ -118,3 +131,21 @@ def test_invalid_slot_returns_400():
     )
     assert status == 400
     assert response.get("error") == "Invalid slot"
+
+
+def test_real_model_selects_champion():
+    assert REAL_RUN_DIR.exists(), "Expected training run directory to exist."
+    context = load_model_context(run_dir=REAL_RUN_DIR)
+    payload = base_payload()
+    status, response = select_champion(
+        payload,
+        context["model"],
+        context["champion2idx"],
+        context["idx2name"],
+        context["eligibility_by_league"],
+        context["feature_dims"],
+        device=context["device"],
+    )
+    assert status == 200
+    assert response.get("champion")
+    assert normalize(response["champion"]) in context["champion2idx"]
