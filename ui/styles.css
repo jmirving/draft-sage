@@ -315,7 +315,7 @@ button {
 
 .boards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
   gap: 20px;
 }
 
@@ -349,8 +349,13 @@ button {
   font-size: 13px;
 }
 
-.board-section h4 {
-  margin: 12px 0 8px;
+.board-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.board-row h4 {
+  margin: 6px 0 8px;
 }
 
 .chip-row {
@@ -368,6 +373,11 @@ button {
   border: 1px solid rgba(31, 36, 42, 0.12);
   font-size: 13px;
   background: #fff;
+}
+
+.chip.empty {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .chip img {
@@ -452,5 +462,9 @@ button {
 
   .timeline {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .boards {
+    grid-template-columns: 1fr;
   }
 }

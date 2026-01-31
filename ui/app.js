@@ -66,10 +66,14 @@ const elements = {
   undoPick: document.getElementById("undo-pick"),
   resetDraft: document.getElementById("reset-draft"),
   timeline: document.getElementById("draft-timeline"),
-  blueBans: document.getElementById("blue-bans"),
-  bluePicks: document.getElementById("blue-picks"),
-  redBans: document.getElementById("red-bans"),
-  redPicks: document.getElementById("red-picks"),
+  blueBansEarly: document.getElementById("blue-bans-early"),
+  bluePicksEarly: document.getElementById("blue-picks-early"),
+  blueBansLate: document.getElementById("blue-bans-late"),
+  bluePicksLate: document.getElementById("blue-picks-late"),
+  redBansEarly: document.getElementById("red-bans-early"),
+  redPicksEarly: document.getElementById("red-picks-early"),
+  redBansLate: document.getElementById("red-bans-late"),
+  redPicksLate: document.getElementById("red-picks-late"),
   blueSummary: document.getElementById("blue-summary"),
   redSummary: document.getElementById("red-summary"),
   search: document.getElementById("search"),
@@ -248,6 +252,14 @@ function getTeamSummary(side) {
   return { picks, bans };
 }
 
+function getSlotsByNumber(side, type, numbers) {
+  return numbers.map((num) =>
+    state.draftSlots.find(
+      (slot) => slot.side === side && slot.type === type && slot.num === num
+    ) || null
+  );
+}
+
 function renderBoards() {
   const blue = getTeamSummary("blue");
   const red = getTeamSummary("red");
@@ -255,32 +267,36 @@ function renderBoards() {
   elements.blueSummary.textContent = `${blue.picks.length} picks · ${blue.bans.length} bans`;
   elements.redSummary.textContent = `${red.picks.length} picks · ${red.bans.length} bans`;
 
-  renderChipRow(elements.blueBans, blue.bans);
-  renderChipRow(elements.bluePicks, blue.picks);
-  renderChipRow(elements.redBans, red.bans);
-  renderChipRow(elements.redPicks, red.picks);
+  renderSlotRow(elements.blueBansEarly, getSlotsByNumber("blue", "ban", [1, 2, 3]));
+  renderSlotRow(elements.bluePicksEarly, getSlotsByNumber("blue", "pick", [1, 2, 3]));
+  renderSlotRow(elements.blueBansLate, getSlotsByNumber("blue", "ban", [4, 5]));
+  renderSlotRow(elements.bluePicksLate, getSlotsByNumber("blue", "pick", [4, 5]));
+
+  renderSlotRow(elements.redBansEarly, getSlotsByNumber("red", "ban", [1, 2, 3]));
+  renderSlotRow(elements.redPicksEarly, getSlotsByNumber("red", "pick", [1, 2, 3]));
+  renderSlotRow(elements.redBansLate, getSlotsByNumber("red", "ban", [4, 5]));
+  renderSlotRow(elements.redPicksLate, getSlotsByNumber("red", "pick", [4, 5]));
 }
 
-function renderChipRow(container, slots) {
+function renderSlotRow(container, slotsByNumber) {
   container.innerHTML = "";
-  if (!slots.length) {
-    const empty = document.createElement("span");
-    empty.className = "chip";
-    empty.textContent = "—";
-    container.appendChild(empty);
-    return;
-  }
-  slots.forEach((slot) => {
+  slotsByNumber.forEach((slot) => {
     const chip = document.createElement("span");
     chip.className = "chip";
-    if (slot.champion?.image) {
+    if (!slot || !slot.champion) {
+      chip.classList.add("empty");
+      chip.textContent = "Open";
+      container.appendChild(chip);
+      return;
+    }
+    if (slot.champion.image) {
       const img = document.createElement("img");
       img.src = `${CHAMPION_IMG_BASE}${slot.champion.image}`;
       img.alt = slot.champion.name;
       chip.appendChild(img);
     }
     const label = document.createElement("span");
-    label.textContent = slot.champion?.name || "Unknown";
+    label.textContent = slot.champion.name;
     chip.appendChild(label);
     container.appendChild(chip);
   });
