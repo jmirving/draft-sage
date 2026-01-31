@@ -121,10 +121,16 @@ http://localhost:8000/draft-sage-ui/index.html
 ```
 
 ## Draft API (MVP)
-Serve a minimal pick/ban suggestion API (random baseline for now): 
+Serve a pick/ban suggestion API from a trained model:
 
 ```bash
 python scripts/serve_api.py --port 8001
+```
+
+By default it auto-selects the latest training run in `/home/jirving/projects/lol/.tmp`.
+To pin a specific model:
+```bash
+python scripts/serve_api.py --port 8001 --run-dir /home/jirving/projects/lol/.tmp/training-clean-2025-weights-matrix-seriesid-elig-band-0p3-0p4/20260117_151849
 ```
 
 Endpoint:
