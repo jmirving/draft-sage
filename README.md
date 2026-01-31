@@ -138,5 +138,20 @@ Endpoint:
 POST http://localhost:8001/draft/pick
 ```
 
+## Testing (Red/Green)
+Use the local venv and run pytest. The expected flow is:
+
+Red (write a failing test):
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pytest
+```
+
+Green (implement fix, re-run):
+```bash
+.venv/bin/python -m pytest
+```
+
 ---
 For more details, see the code in the respective modules.

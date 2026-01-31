@@ -322,68 +322,87 @@ class DraftHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Invalid JSON"})
             return
 
-        if self.model is None:
-            self._send_json(500, {"error": "Model not loaded"})
-            return
+        status, response = select_champion(
+            payload,
+            self.model,
+            self.champion2idx,
+            self.idx2name,
+            self.eligibility_by_league,
+            self.feature_dims,
+            device=self.device,
+        )
+        self._send_json(status, response)
 
-        draft_sequence = build_draft_sequence(payload, self.champion2idx)
-        slot_index = resolve_slot_index(payload, draft_sequence)
-        side, action_type, number = DRAFT_ORDER[slot_index]
-        action_value = 1 if action_type == "pick" else 0
-        side_value = 1 if side == "red" else 0
 
-        patch_index = int(payload.get("patch_index", 0) or 0)
-        league_index = int(payload.get("league_index", 0) or 0)
-        team_index = int(payload.get("team_index", 0) or 0)
+def select_champion(
+    payload: dict,
+    model: DraftMLP | None,
+    champion2idx: dict[str, int],
+    idx2name: dict[int, str],
+    eligibility_by_league: dict[str, list[int]],
+    feature_dims: dict[str, int],
+    *,
+    device: torch.device,
+) -> tuple[int, dict]:
+    if model is None:
+        return 500, {"error": "Model not loaded"}
 
-        if patch_index < 0 or patch_index >= self.feature_dims.get("num_patches", 1):
-            patch_index = 0
-        if league_index < 0 or league_index >= self.feature_dims.get("num_leagues", 1):
-            league_index = 0
-        if team_index < 0 or team_index >= self.feature_dims.get("num_teams", 1):
-            team_index = 0
+    draft_sequence = build_draft_sequence(payload, champion2idx)
+    slot_index = resolve_slot_index(payload, draft_sequence)
+    side, action_type, number = DRAFT_ORDER[slot_index]
+    action_value = 1 if action_type == "pick" else 0
+    side_value = 1 if side == "red" else 0
 
-        features = {
-            "draft_sequence": torch.tensor([draft_sequence], dtype=torch.long, device=self.device),
-            "patch_index": torch.tensor([patch_index], dtype=torch.long, device=self.device),
-            "action_type": torch.tensor([action_value], dtype=torch.long, device=self.device),
-            "side": torch.tensor([side_value], dtype=torch.long, device=self.device),
-            "event_index": torch.tensor([slot_index], dtype=torch.long, device=self.device),
-            "league_index": torch.tensor([league_index], dtype=torch.long, device=self.device),
-            "team_index": torch.tensor([team_index], dtype=torch.long, device=self.device),
-        }
+    patch_index = int(payload.get("patch_index", 0) or 0)
+    league_index = int(payload.get("league_index", 0) or 0)
+    team_index = int(payload.get("team_index", 0) or 0)
 
-        blocked_indices = build_unavailable_indices(payload, self.champion2idx)
-        output_size = self.model.classifier[-1].out_features
-        mask = torch.ones(output_size, dtype=torch.bool, device=self.device)
-        for idx in blocked_indices:
-            if idx > 0 and idx - 1 < output_size:
-                mask[idx - 1] = False
+    if patch_index < 0 or patch_index >= feature_dims.get("num_patches", 1):
+        patch_index = 0
+    if league_index < 0 or league_index >= feature_dims.get("num_leagues", 1):
+        league_index = 0
+    if team_index < 0 or team_index >= feature_dims.get("num_teams", 1):
+        team_index = 0
 
-        league_key = normalize_category(payload.get("league"))
-        game_date_value = parse_game_date(payload)
-        if league_key and game_date_value is not None:
-            eligibility = self.eligibility_by_league.get(league_key)
-            if eligibility:
-                for idx, threshold in enumerate(eligibility):
-                    if game_date_value < threshold:
-                        mask[idx] = False
+    features = {
+        "draft_sequence": torch.tensor([draft_sequence], dtype=torch.long, device=device),
+        "patch_index": torch.tensor([patch_index], dtype=torch.long, device=device),
+        "action_type": torch.tensor([action_value], dtype=torch.long, device=device),
+        "side": torch.tensor([side_value], dtype=torch.long, device=device),
+        "event_index": torch.tensor([slot_index], dtype=torch.long, device=device),
+        "league_index": torch.tensor([league_index], dtype=torch.long, device=device),
+        "team_index": torch.tensor([team_index], dtype=torch.long, device=device),
+    }
 
-        if not mask.any():
-            self._send_json(422, {"error": "No available champions"})
-            return
+    blocked_indices = build_unavailable_indices(payload, champion2idx)
+    output_size = model.classifier[-1].out_features
+    mask = torch.ones(output_size, dtype=torch.bool, device=device)
+    for idx in blocked_indices:
+        if idx > 0 and idx - 1 < output_size:
+            mask[idx - 1] = False
 
-        with torch.no_grad():
-            logits = self.model(features)
-            masked_logits = logits.masked_fill(~mask, -1e9)
-            pick_index = int(masked_logits.argmax(dim=1).item())
+    league_key = normalize_category(payload.get("league"))
+    game_date_value = parse_game_date(payload)
+    if league_key and game_date_value is not None:
+        eligibility = eligibility_by_league.get(league_key)
+        if eligibility:
+            for idx, threshold in enumerate(eligibility):
+                if game_date_value < threshold:
+                    mask[idx] = False
 
-        champion_name = self.idx2name.get(pick_index + 1)
-        if not champion_name:
-            self._send_json(422, {"error": "Model returned unknown champion"})
-            return
+    if not mask.any():
+        return 422, {"error": "No available champions"}
 
-        self._send_json(200, {"champion": champion_name, "slot": {"side": side, "type": action_type, "num": number}})
+    with torch.no_grad():
+        logits = model(features)
+        masked_logits = logits.masked_fill(~mask, -1e9)
+        pick_index = int(masked_logits.argmax(dim=1).item())
+
+    champion_name = idx2name.get(pick_index + 1)
+    if not champion_name:
+        return 422, {"error": "Model returned unknown champion"}
+
+    return 200, {"champion": champion_name, "slot": {"side": side, "type": action_type, "num": number}}
 
 
 def main() -> None:
