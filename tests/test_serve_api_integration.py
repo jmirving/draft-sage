@@ -1,4 +1,5 @@
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -62,7 +63,8 @@ def post_pick(port: int) -> dict:
 
 @pytest.mark.integration
 def test_api_health_and_pick_integration():
-    if not can_bind_localhost():
+    force_run = os.environ.get("RUN_INTEGRATION") == "1"
+    if not force_run and not can_bind_localhost():
         pytest.skip("Localhost sockets not permitted in this environment.")
     assert REAL_RUN_DIR.exists(), "Expected training run directory to exist."
 
