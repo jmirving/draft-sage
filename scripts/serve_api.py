@@ -233,7 +233,7 @@ def build_unavailable_indices(payload: dict, champion2idx: dict[str, int]) -> se
     return taken
 
 
-def resolve_slot_index(payload: dict, draft_sequence: list[int]) -> int:
+def resolve_slot_index(payload: dict, draft_sequence: list[int]) -> Optional[int]:
     slot = payload.get("slot") or {}
     slot_side = slot.get("side")
     slot_type = slot.get("type")
@@ -242,6 +242,7 @@ def resolve_slot_index(payload: dict, draft_sequence: list[int]) -> int:
         for index, (side, action_type, number) in enumerate(DRAFT_ORDER):
             if side == slot_side and action_type == slot_type and number == slot_num:
                 return index
+        return None
     for index, champion in enumerate(draft_sequence):
         if champion == 0:
             return index
@@ -349,6 +350,8 @@ def select_champion(
 
     draft_sequence = build_draft_sequence(payload, champion2idx)
     slot_index = resolve_slot_index(payload, draft_sequence)
+    if slot_index is None:
+        return 400, {"error": "Invalid slot"}
     side, action_type, number = DRAFT_ORDER[slot_index]
     action_value = 1 if action_type == "pick" else 0
     side_value = 1 if side == "red" else 0

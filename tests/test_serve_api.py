@@ -101,3 +101,20 @@ def test_pick_all_blocked():
     )
     assert status == 422
     assert response.get("error") == "No available champions"
+
+
+def test_invalid_slot_returns_400():
+    context = make_model_context()
+    payload = base_payload()
+    payload["slot"] = {"side": "blue", "type": "pick", "num": 9}
+    status, response = select_champion(
+        payload,
+        context["model"],
+        context["champion2idx"],
+        context["idx2name"],
+        context["eligibility_by_league"],
+        context["feature_dims"],
+        device=context["device"],
+    )
+    assert status == 400
+    assert response.get("error") == "Invalid slot"
