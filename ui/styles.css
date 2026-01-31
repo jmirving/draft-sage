@@ -264,11 +264,42 @@ button {
   flex-wrap: wrap;
 }
 
-.timeline {
+.draft-grid {
   margin-top: 18px;
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.draft-column {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(31, 36, 42, 0.08);
+}
+
+.draft-column.blue {
+  border-top: 4px solid var(--blue);
+}
+
+.draft-column.red {
+  border-top: 4px solid var(--red);
+}
+
+.draft-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.draft-row h4 {
+  margin: 12px 0 8px;
+}
+
+.slot-row {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
 }
 
 .slot {
@@ -313,77 +344,9 @@ button {
   font-size: 14px;
 }
 
-.boards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.team-board {
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(31, 36, 42, 0.08);
-}
-
-.team-board.blue {
-  border-top: 4px solid var(--blue);
-}
-
-.team-board.red {
-  border-top: 4px solid var(--red);
-}
-
-.team-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.team-header h3 {
-  margin: 0;
-}
-
 .summary {
   color: var(--muted);
   font-size: 13px;
-}
-
-.board-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.board-row h4 {
-  margin: 6px 0 8px;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 36, 42, 0.12);
-  font-size: 13px;
-  background: #fff;
-}
-
-.chip.empty {
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.chip img {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
 }
 
 .pool-header {
@@ -460,11 +423,7 @@ button {
     padding: 20px 16px 40px;
   }
 
-  .timeline {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-
-  .boards {
+  .draft-grid {
     grid-template-columns: 1fr;
   }
 }

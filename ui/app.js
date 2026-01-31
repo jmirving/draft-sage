@@ -65,7 +65,6 @@ const elements = {
   aiPick: document.getElementById("ai-pick"),
   undoPick: document.getElementById("undo-pick"),
   resetDraft: document.getElementById("reset-draft"),
-  timeline: document.getElementById("draft-timeline"),
   blueBansEarly: document.getElementById("blue-bans-early"),
   bluePicksEarly: document.getElementById("blue-picks-early"),
   blueBansLate: document.getElementById("blue-bans-late"),
@@ -145,29 +144,10 @@ async function loadChampionData() {
   elements.championSource.textContent = "Missing champion data";
 }
 
-function initTimeline() {
-  elements.timeline.innerHTML = "";
-  state.draftSlots.forEach((slot, index) => {
-    const card = document.createElement("div");
-    card.className = `slot ${slot.side}`;
-    card.dataset.index = String(index);
-
-    const meta = document.createElement("div");
-    meta.className = "slot-meta";
-    meta.innerHTML = `<span>${slot.side.toUpperCase()}</span><span>${slot.type.toUpperCase()} ${slot.num}</span>`;
-
-    const name = document.createElement("div");
-    name.className = "slot-name";
-    name.textContent = "Open";
-
-    card.appendChild(meta);
-    card.appendChild(name);
-    card.addEventListener("click", () => {
-      state.activeIndex = index;
-      render();
-    });
-    elements.timeline.appendChild(card);
-  });
+function getSlotIndex(side, type, num) {
+  return state.draftSlots.findIndex(
+    (slot) => slot.side === side && slot.type === type && slot.num === num
+  );
 }
 
 function getUnavailableSet() {
@@ -247,75 +227,70 @@ function resetSeries() {
 }
 
 function getTeamSummary(side) {
-  const picks = state.draftSlots.filter((slot) => slot.side === side && slot.type === "pick" && slot.champion);
-  const bans = state.draftSlots.filter((slot) => slot.side === side && slot.type === "ban" && slot.champion);
+  const picks = state.draftSlots.filter(
+    (slot) => slot.side === side && slot.type === "pick" && slot.champion
+  );
+  const bans = state.draftSlots.filter(
+    (slot) => slot.side === side && slot.type === "ban" && slot.champion
+  );
   return { picks, bans };
 }
 
 function getSlotsByNumber(side, type, numbers) {
-  return numbers.map((num) =>
-    state.draftSlots.find(
-      (slot) => slot.side === side && slot.type === type && slot.num === num
-    ) || null
-  );
+  return numbers.map((num) => {
+    const index = getSlotIndex(side, type, num);
+    return { slot: state.draftSlots[index], index };
+  });
 }
 
-function renderBoards() {
+function renderDraftGrid() {
   const blue = getTeamSummary("blue");
   const red = getTeamSummary("red");
 
   elements.blueSummary.textContent = `${blue.picks.length} picks · ${blue.bans.length} bans`;
   elements.redSummary.textContent = `${red.picks.length} picks · ${red.bans.length} bans`;
 
-  renderSlotRow(elements.blueBansEarly, getSlotsByNumber("blue", "ban", [1, 2, 3]));
-  renderSlotRow(elements.bluePicksEarly, getSlotsByNumber("blue", "pick", [1, 2, 3]));
-  renderSlotRow(elements.blueBansLate, getSlotsByNumber("blue", "ban", [4, 5]));
-  renderSlotRow(elements.bluePicksLate, getSlotsByNumber("blue", "pick", [4, 5]));
+  renderSlotCards(elements.blueBansEarly, getSlotsByNumber("blue", "ban", [1, 2, 3]));
+  renderSlotCards(elements.bluePicksEarly, getSlotsByNumber("blue", "pick", [1, 2, 3]));
+  renderSlotCards(elements.blueBansLate, getSlotsByNumber("blue", "ban", [4, 5]));
+  renderSlotCards(elements.bluePicksLate, getSlotsByNumber("blue", "pick", [4, 5]));
 
-  renderSlotRow(elements.redBansEarly, getSlotsByNumber("red", "ban", [1, 2, 3]));
-  renderSlotRow(elements.redPicksEarly, getSlotsByNumber("red", "pick", [1, 2, 3]));
-  renderSlotRow(elements.redBansLate, getSlotsByNumber("red", "ban", [4, 5]));
-  renderSlotRow(elements.redPicksLate, getSlotsByNumber("red", "pick", [4, 5]));
+  renderSlotCards(elements.redBansEarly, getSlotsByNumber("red", "ban", [1, 2, 3]));
+  renderSlotCards(elements.redPicksEarly, getSlotsByNumber("red", "pick", [1, 2, 3]));
+  renderSlotCards(elements.redBansLate, getSlotsByNumber("red", "ban", [4, 5]));
+  renderSlotCards(elements.redPicksLate, getSlotsByNumber("red", "pick", [4, 5]));
 }
 
-function renderSlotRow(container, slotsByNumber) {
+function renderSlotCards(container, slotRefs) {
   container.innerHTML = "";
-  slotsByNumber.forEach((slot) => {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    if (!slot || !slot.champion) {
-      chip.classList.add("empty");
-      chip.textContent = "Open";
-      container.appendChild(chip);
+  slotRefs.forEach(({ slot, index }) => {
+    if (!slot) {
       return;
     }
-    if (slot.champion.image) {
-      const img = document.createElement("img");
-      img.src = `${CHAMPION_IMG_BASE}${slot.champion.image}`;
-      img.alt = slot.champion.name;
-      chip.appendChild(img);
+    const card = document.createElement("div");
+    card.className = `slot ${slot.side}`;
+    if (index === state.activeIndex) {
+      card.classList.add("active");
     }
-    const label = document.createElement("span");
-    label.textContent = slot.champion.name;
-    chip.appendChild(label);
-    container.appendChild(chip);
+    const meta = document.createElement("div");
+    meta.className = "slot-meta";
+    meta.innerHTML = `<span>${slot.type.toUpperCase()}</span><span>${slot.num}</span>`;
+
+    const name = document.createElement("div");
+    name.className = "slot-name";
+    name.textContent = slot.champion ? slot.champion.name : "Open";
+
+    card.appendChild(meta);
+    card.appendChild(name);
+    card.addEventListener("click", () => {
+      state.activeIndex = index;
+      render();
+    });
+    container.appendChild(card);
   });
 }
 
-function renderTimeline() {
-  const cards = elements.timeline.querySelectorAll(".slot");
-  cards.forEach((card, index) => {
-    const slot = state.draftSlots[index];
-    const name = card.querySelector(".slot-name");
-    const status = slot.champion ? slot.champion.name : "Open";
-    name.textContent = status;
-    if (index === state.activeIndex) {
-      card.classList.add("active");
-    } else {
-      card.classList.remove("active");
-    }
-  });
-
+function renderCurrentSlot() {
   const current = getCurrentSlot();
   if (current) {
     const sideLabel = current.side === "blue" ? "Blue" : "Red";
@@ -491,8 +466,8 @@ function updateControls() {
 
 function render() {
   updateControls();
-  renderTimeline();
-  renderBoards();
+  renderCurrentSlot();
+  renderDraftGrid();
   renderChampionGrid();
 }
 
@@ -567,7 +542,6 @@ function bindEvents() {
 async function init() {
   loadConfig();
   bindEvents();
-  initTimeline();
   await loadChampionData();
   render();
   maybeAutoPick();
