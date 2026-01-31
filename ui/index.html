@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Draft Sage | Fearless Draft</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Draft Sage</p>
+          <h1>Fearless Draft Lab</h1>
+          <p class="subtitle">MVP pick/ban workspace with AI assist.</p>
+        </div>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">Champion Source</span>
+            <span id="champion-source" class="status-value">Loading…</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">AI Endpoint</span>
+            <span id="api-status" class="status-value">Local API (optional)</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Draft Status</span>
+            <span id="draft-status" class="status-value">Ready</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel controls">
+        <div class="control-block">
+          <h2>Mode</h2>
+          <div class="segmented" id="mode-toggle">
+            <button type="button" data-mode="interactive" class="active">Interactive</button>
+            <button type="button" data-mode="versus">Versus</button>
+          </div>
+          <p class="helper">Interactive = AI picks on demand. Versus = AI runs the opposing side.</p>
+        </div>
+
+        <div class="control-block">
+          <h2>Your Side</h2>
+          <div class="segmented" id="side-toggle">
+            <button type="button" data-side="blue" class="active">Blue</button>
+            <button type="button" data-side="red">Red</button>
+          </div>
+          <p class="helper">Only used in Versus mode.</p>
+        </div>
+
+        <div class="control-block">
+          <h2>AI Settings</h2>
+          <label class="field">
+            <span>API Base URL</span>
+            <input id="api-base" type="text" value="http://localhost:8001" />
+          </label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input id="auto-advance" type="checkbox" checked />
+              <span>Auto-pick for AI side</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="control-block">
+          <h2>Fearless Series</h2>
+          <div class="series-row">
+            <div>
+              <p class="series-label">Game</p>
+              <p id="series-game" class="series-value">1</p>
+            </div>
+            <div>
+              <p class="series-label">Lockout Count</p>
+              <p id="lockout-count" class="series-value">0</p>
+            </div>
+          </div>
+          <div class="button-row">
+            <button id="commit-game" class="primary" type="button">Next Game (Lock Picks)</button>
+            <button id="reset-series" class="ghost" type="button">Reset Series</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel draft">
+        <div class="draft-header">
+          <div>
+            <p class="eyebrow">Current Slot</p>
+            <h2 id="current-slot">Loading…</h2>
+          </div>
+          <div class="draft-actions">
+            <button id="ai-pick" class="primary" type="button">AI Pick Next</button>
+            <button id="undo-pick" class="ghost" type="button">Undo</button>
+            <button id="reset-draft" class="ghost" type="button">Reset Draft</button>
+          </div>
+        </div>
+        <div id="draft-timeline" class="timeline"></div>
+      </section>
+
+      <section class="panel boards">
+        <div class="team-board blue">
+          <div class="team-header">
+            <h3>Blue Side</h3>
+            <p id="blue-summary" class="summary">0 picks · 0 bans</p>
+          </div>
+          <div class="board-section">
+            <h4>Bans</h4>
+            <div id="blue-bans" class="chip-row"></div>
+          </div>
+          <div class="board-section">
+            <h4>Picks</h4>
+            <div id="blue-picks" class="chip-row"></div>
+          </div>
+        </div>
+
+        <div class="team-board red">
+          <div class="team-header">
+            <h3>Red Side</h3>
+            <p id="red-summary" class="summary">0 picks · 0 bans</p>
+          </div>
+          <div class="board-section">
+            <h4>Bans</h4>
+            <div id="red-bans" class="chip-row"></div>
+          </div>
+          <div class="board-section">
+            <h4>Picks</h4>
+            <div id="red-picks" class="chip-row"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel pool">
+        <div class="pool-header">
+          <div>
+            <h2>Champion Pool</h2>
+            <p class="helper">Click a champion to fill the active slot.</p>
+          </div>
+          <div class="pool-controls">
+            <label class="field">
+              <span>Search</span>
+              <input id="search" type="text" placeholder="Type a champion name…" />
+            </label>
+            <div class="pool-meta">
+              <span id="pool-count">0 available</span>
+              <span id="pool-total">0 total</span>
+            </div>
+          </div>
+        </div>
+        <div id="champion-grid" class="champion-grid"></div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

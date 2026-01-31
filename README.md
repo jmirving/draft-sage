@@ -106,5 +106,19 @@ automate cron-style refreshes or rapid experiments.
 - **Model Serving:** API endpoints for inference and model management.
 - **User Interface:** Web or desktop UI for interacting with predictions and analytics.
 
+## Draft UI (MVP)
+The MVP pick/ban UI lives in `draft-sage/ui`.
+
+Quick start:
+```bash
+cd /home/jirving/projects/lol
+python -m http.server 8000
+```
+
+Open:
+```
+http://localhost:8000/draft-sage/ui/index.html
+```
+
 ---
 For more details, see the code in the respective modules.
