@@ -66,13 +66,19 @@ const elements = {
   undoPick: document.getElementById("undo-pick"),
   resetDraft: document.getElementById("reset-draft"),
   blueBansEarly: document.getElementById("blue-bans-early"),
-  bluePicksEarly: document.getElementById("blue-picks-early"),
+  bluePick1: document.getElementById("blue-pick-1"),
+  bluePick2: document.getElementById("blue-pick-2"),
+  bluePick3: document.getElementById("blue-pick-3"),
   blueBansLate: document.getElementById("blue-bans-late"),
-  bluePicksLate: document.getElementById("blue-picks-late"),
+  bluePick4: document.getElementById("blue-pick-4"),
+  bluePick5: document.getElementById("blue-pick-5"),
   redBansEarly: document.getElementById("red-bans-early"),
-  redPicksEarly: document.getElementById("red-picks-early"),
+  redPick1: document.getElementById("red-pick-1"),
+  redPick2: document.getElementById("red-pick-2"),
+  redPick3: document.getElementById("red-pick-3"),
   redBansLate: document.getElementById("red-bans-late"),
-  redPicksLate: document.getElementById("red-picks-late"),
+  redPick4: document.getElementById("red-pick-4"),
+  redPick5: document.getElementById("red-pick-5"),
   blueSummary: document.getElementById("blue-summary"),
   redSummary: document.getElementById("red-summary"),
   search: document.getElementById("search"),
@@ -251,14 +257,20 @@ function renderDraftGrid() {
   elements.redSummary.textContent = `${red.picks.length} picks · ${red.bans.length} bans`;
 
   renderSlotCards(elements.blueBansEarly, getSlotsByNumber("blue", "ban", [1, 2, 3]));
-  renderSlotCards(elements.bluePicksEarly, getSlotsByNumber("blue", "pick", [1, 2, 3]));
+  renderSlotCards(elements.bluePick1, getSlotsByNumber("blue", "pick", [1]));
+  renderSlotCards(elements.bluePick2, getSlotsByNumber("blue", "pick", [2]));
+  renderSlotCards(elements.bluePick3, getSlotsByNumber("blue", "pick", [3]));
   renderSlotCards(elements.blueBansLate, getSlotsByNumber("blue", "ban", [4, 5]));
-  renderSlotCards(elements.bluePicksLate, getSlotsByNumber("blue", "pick", [4, 5]));
+  renderSlotCards(elements.bluePick4, getSlotsByNumber("blue", "pick", [4]));
+  renderSlotCards(elements.bluePick5, getSlotsByNumber("blue", "pick", [5]));
 
   renderSlotCards(elements.redBansEarly, getSlotsByNumber("red", "ban", [1, 2, 3]));
-  renderSlotCards(elements.redPicksEarly, getSlotsByNumber("red", "pick", [1, 2, 3]));
+  renderSlotCards(elements.redPick1, getSlotsByNumber("red", "pick", [1]));
+  renderSlotCards(elements.redPick2, getSlotsByNumber("red", "pick", [2]));
+  renderSlotCards(elements.redPick3, getSlotsByNumber("red", "pick", [3]));
   renderSlotCards(elements.redBansLate, getSlotsByNumber("red", "ban", [4, 5]));
-  renderSlotCards(elements.redPicksLate, getSlotsByNumber("red", "pick", [4, 5]));
+  renderSlotCards(elements.redPick4, getSlotsByNumber("red", "pick", [4]));
+  renderSlotCards(elements.redPick5, getSlotsByNumber("red", "pick", [5]));
 }
 
 function renderSlotCards(container, slotRefs) {
