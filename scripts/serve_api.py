@@ -9,9 +9,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
 import torch
 import torch.nn as nn
+from datetime import datetime, timezone
 
 
 DRAFT_ORDER = [
@@ -45,10 +45,29 @@ def normalize(value: str) -> str:
 
 
 def normalize_category(value: object) -> Optional[str]:
-    if value is None or pd.isna(value):
+    if value is None:
         return None
     text = str(value).strip()
     return text if text else None
+
+
+def parse_date_to_ns(value: object) -> Optional[int]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        cleaned = text.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(cleaned)
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text, "%Y-%m-%d")
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return int(parsed.timestamp() * 1_000_000_000)
 
 
 class DraftMLP(nn.Module):
@@ -189,10 +208,10 @@ def load_eligibility(path: Optional[Path], champion2idx: dict[str, int]) -> dict
             idx = champion2idx.get(sanitized)
             if not idx:
                 continue
-            parsed = pd.to_datetime(date_value, errors="coerce")
-            if pd.isna(parsed):
+            parsed_ns = parse_date_to_ns(date_value)
+            if parsed_ns is None:
                 continue
-            vector[idx - 1] = int(parsed.value)
+            vector[idx - 1] = parsed_ns
         by_league[normalized_league] = vector
     return by_league
 
@@ -253,9 +272,9 @@ def parse_game_date(payload: dict) -> Optional[int]:
         value = payload.get(key)
         if not value:
             continue
-        parsed = pd.to_datetime(value, errors="coerce")
-        if not pd.isna(parsed):
-            return int(parsed.value)
+        parsed_ns = parse_date_to_ns(value)
+        if parsed_ns is not None:
+            return parsed_ns
     return None
 
 
