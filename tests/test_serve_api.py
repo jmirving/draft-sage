@@ -1,4 +1,6 @@
 from pathlib import Path
+import subprocess
+import sys
 
 import torch
 
@@ -149,3 +151,43 @@ def test_real_model_selects_champion():
     assert status == 200
     assert response.get("champion")
     assert normalize(response["champion"]) in context["champion2idx"]
+
+
+def test_preflight_check_success():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/serve_api.py",
+            "--check",
+            "--run-dir",
+            str(REAL_RUN_DIR),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "Preflight OK" in result.stdout
+
+
+def test_preflight_check_missing_model():
+    missing_dir = Path("/tmp/draft-sage-missing-run")
+    if missing_dir.exists():
+        for child in missing_dir.iterdir():
+            if child.is_file():
+                child.unlink()
+        missing_dir.rmdir()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/serve_api.py",
+            "--check",
+            "--run-dir",
+            str(missing_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "model.pth not found" in result.stderr

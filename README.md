@@ -138,6 +138,11 @@ Endpoint:
 POST http://localhost:8001/draft/pick
 ```
 
+Preflight check (loads model + mapping and exits):
+```bash
+python scripts/serve_api.py --check --run-dir /home/jirving/projects/lol/.tmp/training-clean-2025-weights-matrix-seriesid-elig-band-0p3-0p4/20260117_151849
+```
+
 ## Testing (Red/Green)
 Use the local venv and run pytest. The expected flow is:
 

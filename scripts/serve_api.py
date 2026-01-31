@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Optional
@@ -491,15 +492,29 @@ def main() -> None:
         default=None,
         help="Override champion eligibility JSON path.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Validate model + mapping load and exit.",
+    )
     args = parser.parse_args()
 
-    context = load_model_context(
-        run_dir=Path(args.run_dir) if args.run_dir else None,
-        model_path=Path(args.model_path) if args.model_path else None,
-        config_path=Path(args.config_path) if args.config_path else None,
-        champion_mapping_path=args.champion_mapping_path,
-        eligibility_path=args.eligibility_path,
-    )
+    try:
+        context = load_model_context(
+            run_dir=Path(args.run_dir) if args.run_dir else None,
+            model_path=Path(args.model_path) if args.model_path else None,
+            config_path=Path(args.config_path) if args.config_path else None,
+            champion_mapping_path=args.champion_mapping_path,
+            eligibility_path=args.eligibility_path,
+        )
+    except Exception as exc:  # pragma: no cover - CLI guard
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.check:
+        run_note = context.get("run_dir") or "manual"
+        print(f"Preflight OK (run-dir={run_note})")
+        raise SystemExit(0)
 
     DraftHandler.model = context["model"]
     DraftHandler.device = context["device"]
