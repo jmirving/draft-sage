@@ -107,17 +107,17 @@ automate cron-style refreshes or rapid experiments.
 - **User Interface:** Web or desktop UI for interacting with predictions and analytics.
 
 ## Draft UI (MVP)
-The MVP pick/ban UI lives in `/home/jirving/projects/lol/draft-sage-ui`.
+The MVP pick/ban UI lives in `/home/jirving/projects/lol/draft-sage/ui`.
 
 Quick start:
 ```bash
 cd /home/jirving/projects/lol
-python -m http.server 8000
+python3 -m http.server 8000
 ```
 
 Open:
 ```
-http://localhost:8000/draft-sage-ui/index.html
+http://localhost:8000/draft-sage/ui/index.html
 ```
 
 ## Draft API (MVP)

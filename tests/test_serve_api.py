@@ -1,7 +1,9 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
 
+import pytest
 import torch
 
 from scripts.serve_api import (
@@ -16,6 +18,27 @@ REAL_RUN_DIR = Path(
     "/home/jirving/projects/lol/.tmp/"
     "training-clean-2025-weights-matrix-seriesid-elig-band-0p3-0p4/20260117_151849"
 )
+WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+CHAMPION_DATA_PATHS = [
+    WORKSPACE_ROOT
+    / "lol-ddragon-snapshot-cron/data/ddragon/extracted/16.1.1/16.1.1/data/en_US/champion.json",
+    WORKSPACE_ROOT / "draft-sage/resources/champions.json",
+]
+
+
+def load_champion_pool() -> set[str]:
+    for path in CHAMPION_DATA_PATHS:
+        if not path.exists():
+            continue
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            continue
+        names = [champ.get("name") for champ in data.values() if champ.get("name")]
+        if names:
+            return {normalize(name) for name in names}
+    return set()
 
 
 def build_model(output_size: int) -> DraftMLP:
@@ -151,6 +174,27 @@ def test_real_model_selects_champion():
     assert status == 200
     assert response.get("champion")
     assert normalize(response["champion"]) in context["champion2idx"]
+
+
+def test_real_model_output_in_ui_pool():
+    if not REAL_RUN_DIR.exists():
+        pytest.skip("Expected training run directory to exist.")
+    pool = load_champion_pool()
+    if not pool:
+        pytest.skip("No champion data available for UI pool.")
+    context = load_model_context(run_dir=REAL_RUN_DIR)
+    payload = base_payload()
+    status, response = select_champion(
+        payload,
+        context["model"],
+        context["champion2idx"],
+        context["idx2name"],
+        context["eligibility_by_league"],
+        context["feature_dims"],
+        device=context["device"],
+    )
+    assert status == 200
+    assert normalize(response["champion"]) in pool
 
 
 def test_preflight_check_success():
