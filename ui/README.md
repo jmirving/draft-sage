@@ -2,6 +2,8 @@
 
 Static fearless draft UI with optional AI pick calls.
 
+Temporary decision: the UI lives inside the `draft-sage/ui` folder rather than a separate repo.
+
 ## Run locally
 Serve the repo root so the UI can fetch the DDragon snapshot:
 
