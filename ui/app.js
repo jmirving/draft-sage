@@ -1,4 +1,4 @@
-const DRAFT_ORDER = [
+const BASE_DRAFT_ORDER = [
   { side: "blue", type: "ban", num: 1 },
   { side: "red", type: "ban", num: 1 },
   { side: "blue", type: "ban", num: 2 },
@@ -20,6 +20,20 @@ const DRAFT_ORDER = [
   { side: "blue", type: "pick", num: 5 },
   { side: "red", type: "pick", num: 5 }
 ];
+
+function getDraftOrder(firstPickSide) {
+  if (firstPickSide !== "red") {
+    return BASE_DRAFT_ORDER;
+  }
+  return BASE_DRAFT_ORDER.map((slot) => ({
+    ...slot,
+    side: slot.side === "blue" ? "red" : "blue"
+  }));
+}
+
+function buildDraftSlots(firstPickSide) {
+  return getDraftOrder(firstPickSide).map((slot) => ({ ...slot, champion: null, source: null }));
+}
 
 const CHAMPION_SOURCES = [
   {
@@ -43,6 +57,7 @@ const CHAMPION_SOURCES = [
 const DEFAULT_CONFIG = {
   mode: "interactive",
   userSide: "blue",
+  firstPickSide: "blue",
   apiBaseUrl: "http://localhost:8001",
   autoAdvance: true
 };
@@ -53,7 +68,8 @@ const state = {
   championMap: new Map(),
   championImgBase: null,
   activeIndex: 0,
-  draftSlots: DRAFT_ORDER.map((slot) => ({ ...slot, champion: null, source: null })),
+  firstPickSide: DEFAULT_CONFIG.firstPickSide,
+  draftSlots: buildDraftSlots(DEFAULT_CONFIG.firstPickSide),
   mode: DEFAULT_CONFIG.mode,
   userSide: DEFAULT_CONFIG.userSide,
   apiBaseUrl: DEFAULT_CONFIG.apiBaseUrl,
@@ -67,6 +83,7 @@ const state = {
 const elements = {
   modeToggle: document.getElementById("mode-toggle"),
   sideToggle: document.getElementById("side-toggle"),
+  firstPickToggle: document.getElementById("first-pick-toggle"),
   apiBase: document.getElementById("api-base"),
   apiStatus: document.getElementById("api-status"),
   championSource: document.getElementById("champion-source"),
@@ -113,12 +130,15 @@ function loadConfig() {
       const parsed = JSON.parse(stored);
       state.mode = parsed.mode || state.mode;
       state.userSide = parsed.userSide || state.userSide;
+      state.firstPickSide = parsed.firstPickSide === "red" ? "red" : "blue";
       state.apiBaseUrl = parsed.apiBaseUrl || state.apiBaseUrl;
       state.autoAdvance = typeof parsed.autoAdvance === "boolean" ? parsed.autoAdvance : state.autoAdvance;
     } catch (error) {
       console.warn("Failed to load config", error);
     }
   }
+  state.draftSlots = buildDraftSlots(state.firstPickSide);
+  state.activeIndex = 0;
 }
 
 function persistConfig() {
@@ -127,6 +147,7 @@ function persistConfig() {
     JSON.stringify({
       mode: state.mode,
       userSide: state.userSide,
+      firstPickSide: state.firstPickSide,
       apiBaseUrl: state.apiBaseUrl,
       autoAdvance: state.autoAdvance
     })
@@ -223,10 +244,7 @@ function undoLast() {
 }
 
 function resetDraft() {
-  state.draftSlots.forEach((slot) => {
-    slot.champion = null;
-    slot.source = null;
-  });
+  state.draftSlots = buildDraftSlots(state.firstPickSide);
   state.activeIndex = 0;
 }
 
@@ -383,6 +401,7 @@ async function requestAiPick(slot) {
       source: entry.source
     })),
     fearlessLockout: Array.from(state.fearlessLockout),
+    firstPickSide: state.firstPickSide,
     userSide: state.userSide
   };
 
@@ -543,6 +562,11 @@ function updateControls() {
   sideButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.side === state.userSide);
   });
+
+  const firstPickButtons = elements.firstPickToggle.querySelectorAll("button");
+  firstPickButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.firstPick === state.firstPickSide);
+  });
 }
 
 function render() {
@@ -572,6 +596,24 @@ function bindEvents() {
     state.userSide = button.dataset.side || state.userSide;
     persistConfig();
     render();
+    maybeAutoPick();
+  });
+
+  elements.firstPickToggle.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) {
+      return;
+    }
+    const selected = button.dataset.firstPick === "red" ? "red" : "blue";
+    if (selected === state.firstPickSide) {
+      return;
+    }
+    state.firstPickSide = selected;
+    resetDraft();
+    persistConfig();
+    render();
+    const sideLabel = selected === "red" ? "Red" : "Blue";
+    setDraftStatus(`Draft reset. ${sideLabel} side has first pick.`);
     maybeAutoPick();
   });
 
